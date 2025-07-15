@@ -1,16 +1,13 @@
-#!/usr/bin/env node
-// script that logs to the console "Redis client connected to the server"
-//  when the connection to Redis works correctly
-// It logs to the console "Redis client not connected to the server: ERROR_MESSAGE"
-// when the connection to Redis does not work
-import { createClient } from 'redis';
+import redis from 'redis';
 
-const client = createClient();
+const client = redis.createClient();
+
+// client = redis.createClient();
+
+client.on('error', (err) => console.log(`Redis client not connected to the server: ${err}`));
 
 client.on('connect', () => {
-  console.log('Redis client connected to the server');
-});
-
-client.on('error', (error) => {
-  console.log(`Redis client not connected to the server: ${error.message}`);
+    console.log('Redis client connected to the server');
+}).on('error', (err) => {
+    console.log(`Redis client not connected to the server: ${err}`);
 });

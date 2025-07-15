@@ -1,75 +1,69 @@
-import { createQueue } from 'kue';
-import createPushNotificationsJobs from './8-job';
+import sinon from 'sinon';
 import { expect } from 'chai';
+import { createQueue } from 'kue';
+import createPushNotificationsJobs from './8-job.js';
 
 describe('createPushNotificationsJobs', () => {
-  let queue;
+  let sandbox;
+  let QUEUE;
 
-  before(() => {
-    // Create a Kue queue with test mode enabled
-    queue = createQueue({ name: 'push_notification_code_test' });
-    queue.testMode.enter();
-  });
-
-  after(() => {
-    // Clear the queue and exit test mode
-    queue.testMode.exit();
-    queue.shutdown(1000, err => {
-      if (err) {
-        console.error('Error shutting down Kue queue:', err);
-      } else {
-        console.log('Kue queue shut down successfully');
-      }
-    });
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    QUEUE = createQueue({ name: 'push_notification_code_test' });
+    QUEUE.testMode.enter(true);
   });
 
   afterEach(() => {
-    // Remove all jobs from the queue after each test
-    queue.testMode.clear();
-  });
-
-  it('creates a job for each input object', () => {
-    const jobs = [
-      {
-        phoneNumber: '4153518780',
-        message: 'This is the code 1234 to verify your account',
-      },
-      {
-        phoneNumber: '4153518781',
-        message: 'This is the code 4562 to verify your account',
-      },
-      {
-        phoneNumber: '4153518743',
-        message: 'This is the code 4321 to verify your account',
-      },
-      {
-        phoneNumber: '4153538781',
-        message: 'This is the code 4562 to verify your account',
-      },
-    ];
-
-    createPushNotificationsJobs(jobs, queue);
-
-    // Get all jobs from the queue
-    queue.on('job complete', (id, result) => {
-      queue.testMode.jobs((err, jobs) => {
-        if (err) throw err;
-
-        expect(jobs.length).to.be.equal(4);
-
-        // Check that each job has the expected data
-        jobs.forEach(job => {
-          expect(job.type).to.be.equal('push_notification_code_3');
-          expect(job.data.phoneNumber).to.be.defined;
-          expect(job.data.message).to.be.defined;
-        });
-      });
-    });
+    sandbox.restore();
+    QUEUE.testMode.clear();
+    QUEUE.testMode.exit();
   });
 
   it('throws an error if jobs is not an array', () => {
-    expect(() => {
-      createPushNotificationsJobs({}, queue);
-    }).to.throw('Jobs is not an array');
+    const invalidJobs = {};
+    expect(() => createPushNotificationsJobs(invalidJobs, QUEUE)).to.throw('Jobs is not an array');
   });
+
+  it('adds jobs to the queue with the correct type', () => {
+    const jobInfos = [
+      {
+        phoneNumber: '44556677889',
+        message: 'Use the code 1982 to verify your account',
+      },
+      {
+        phoneNumber: '98877665544',
+        message: 'Use the code 1738 to verify your account',
+      },
+    ];
+    createPushNotificationsJobs(jobInfos, QUEUE);
+
+    expect(QUEUE.testMode.jobs.length).to.equal(2);
+    expect(QUEUE.testMode.jobs[0].data).to.deep.equal(jobInfos[0]);
+    expect(QUEUE.testMode.jobs[0].type).to.equal('push_notification_code_3');
+  });
+
+  it('registers event handlers for a job', () => {
+    const jobInfos = [
+      {
+        phoneNumber: '44556677889',
+        message: 'Use the code 1982 to verify your account',
+      },
+    ];
+    const Push3 = {
+      on: sandbox.stub(),
+      save: sandbox.stub().callsArgWith(0, null),
+    };
+    const queueCreateStub = sandbox.stub(QUEUE, 'create').returns(Push3);
+
+    createPushNotificationsJobs(jobInfos, QUEUE);
+
+    sinon.assert.calledOnce(queueCreateStub);
+    sinon.assert.calledWithExactly(queueCreateStub, 'push_notification_code_3', jobInfos[0]);
+    sinon.assert.calledOnce(Push3.save);
+    sinon.assert.calledThrice(Push3.on);
+    sinon.assert.calledWithExactly(Push3.on.getCall(0), 'complete');
+    sinon.assert.calledWithExactly(Push3.on.getCall(1), 'progress');
+    sinon.assert.calledWithExactly(Push3.on.getCall(2), 'failed');
+  });
+
 });

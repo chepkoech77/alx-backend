@@ -1,41 +1,45 @@
-#!/usr/bin/python3
-""" Defines a LFUCache class that inherits from BaseCaching """
+#!/usr/bin/env python3
+"""
+caching System
+"""
 
-BaseCaching = __import__('base_caching').BaseCaching
+from base_caching import BaseCaching
 
 
 class LFUCache(BaseCaching):
-    """ Defines a caching system that uses LFU algorithm """
+    """
+    caching system:
 
-    def __init__(self):
-        """ Initializes the LFUCache instance """
+    Args:
+        LFUCache ([class]): [basic caching]
+    """
+
+    def __init__(self) -> None:
+        """ initialize of class """
+        self.temp_list = {}
         super().__init__()
-        self.cache_frequency = {}
 
     def put(self, key, item):
-        """ Assigns the item value to the key in cache_data """
-        if key is not None and item is not None:
-            if len(self.cache_data) >= BaseCaching.MAX_ITEMS:
-                min_freq = min(self.cache_frequency.values())
-                items_to_discard = [k for k, v in self.cache_frequency.items() if v == min_freq]
-                if len(items_to_discard) > 1:
-                    # If there are multiple items with the least frequency, use LRU to discard
-                    lru_key = min(self.cache_data, key=lambda k: self.cache_data[k])
-                    print("DISCARD:", lru_key)
-                    del self.cache_data[lru_key]
-                    del self.cache_frequency[lru_key]
-                else:
-                    lfu_key = items_to_discard[0]
-                    print("DISCARD:", lfu_key)
-                    del self.cache_data[lfu_key]
-                    del self.cache_frequency[lfu_key]
+        """
+        Add an item in the cache
+        """
+        if not (key is None or item is None):
             self.cache_data[key] = item
-            self.cache_frequency[key] = 0
+            if len(self.cache_data.keys()) > self.MAX_ITEMS:
+                pop = min(self.temp_list, key=self.temp_list.get)
+                self.temp_list.pop(pop)
+                self.cache_data.pop(pop)
+                print(f"DISCARD: {pop}")
+            if not (key in self.temp_list):
+                self.temp_list[key] = 0
+            else:
+                self.temp_list[key] += 1
 
     def get(self, key):
-        """ Retrieves the value linked to the given key """
-        if key in self.cache_data:
-            self.cache_frequency[key] += 1
-            return self.cache_data[key]
-        return None
-
+        """
+        Get an item by key
+        """
+        if (key is None) or not (key in self.cache_data):
+            return None
+        self.temp_list[key] += 1
+        return self.cache_data.get(key)

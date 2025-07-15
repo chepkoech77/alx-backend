@@ -1,28 +1,52 @@
-#!/usr/bin/python3
-""" Defines a MRUCache class that inherits from BaseCaching """
+#!/usr/bin/env python3
+"""
+MRU Caching
+"""
+
+
+from collections import OrderedDict
+
 
 BaseCaching = __import__('base_caching').BaseCaching
 
 
 class MRUCache(BaseCaching):
-    """ Defines a caching system that uses MRU algorithm """
+    """
+    class MRUCache that inherits
+    from BaseCaching and is a caching system
+    """
 
     def __init__(self):
-        """ Initializes the MRUCache instance """
         super().__init__()
+        self.mru_order = OrderedDict()
 
     def put(self, key, item):
-        """ Assigns the item value to the key in cache_data """
-        if key is not None and item is not None:
-            if len(self.cache_data) >= BaseCaching.MAX_ITEMS:
-                # Get the most recently used key
-                mru_key = max(self.cache_data, key=lambda k: self.cache_data[k])
-                print("DISCARD:", mru_key)
-                del self.cache_data[mru_key]
-            self.cache_data[key] = item
+        """
+        Must assign to the dictionary
+        self.cache_data the item value for the key key
+        """
+        if not key or not item:
+            return
+
+        self.cache_data[key] = item
+        self.mru_order[key] = item
+
+        if len(self.cache_data) > BaseCaching.MAX_ITEMS:
+            item_discarded = next(iter(self.mru_order))
+            del self.cache_data[item_discarded]
+            print("DISCARD:", item_discarded)
+
+        if len(self.mru_order) > BaseCaching.MAX_ITEMS:
+            self.mru_order.popitem(last=False)
+
+        self.mru_order.move_to_end(key, False)
 
     def get(self, key):
-        """ Retrieves the value linked to the given key """
+        """
+        Must return the value in
+        self.cache_data linked to key.
+        """
         if key in self.cache_data:
+            self.mru_order.move_to_end(key, False)
             return self.cache_data[key]
         return None

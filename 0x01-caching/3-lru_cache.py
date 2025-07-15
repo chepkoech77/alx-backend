@@ -1,32 +1,51 @@
-#!/usr/bin/python3
-""" Defines a LRUCache class that inherits from BaseCaching """
+#!/usr/bin/env python3
+"""
+LRU Caching
+"""
+
+
+from lib2to3.pgen2.token import BACKQUOTE
+from typing import OrderedDict
+
 
 BaseCaching = __import__('base_caching').BaseCaching
 
 
 class LRUCache(BaseCaching):
-    """ Defines a caching system that uses LRU algorithm """
+    """
+    class LRUCache that inherits from BaseCaching and is a caching system
+    """
 
     def __init__(self):
-        """ Initializes the LRUCache instance """
+        """"
+        Init method
+        """
         super().__init__()
-        self.recently_used = []
+        self.lru_order = OrderedDict()
 
     def put(self, key, item):
-        """ Assigns the item value to the key in cache_data """
-        if key is not None and item is not None:
-            if len(self.cache_data) >= BaseCaching.MAX_ITEMS:
-                # Get the least recently used key from recently_used list
-                lru_key = self.recently_used.pop(0)
-                print("DISCARD:", lru_key)
-                del self.cache_data[lru_key]
+        """
+        Must assign to the dictionary self.cache_data
+        the item value for the key
+        """
+        if key and item:
+            self.lru_order[key] = item
+            self.lru_order.move_to_end(key)
             self.cache_data[key] = item
-            self.recently_used.append(key)
+
+        if len(self.cache_data) > BaseCaching.MAX_ITEMS:
+            item_discarded = next(iter(self.lru_order))
+            del self.cache_data[item_discarded]
+            print("DISCARD:", item_discarded)
+
+        if len(self.lru_order) > BaseCaching.MAX_ITEMS:
+            self.lru_order.popitem(last=False)
 
     def get(self, key):
-        """ Retrieves the value linked to the given key """
+        """
+        Must return the value in self.cache_data linked to key
+        """
         if key in self.cache_data:
-            self.recently_used.remove(key)
-            self.recently_used.append(key)
+            self.lru_order.move_to_end(key)
             return self.cache_data[key]
         return None
